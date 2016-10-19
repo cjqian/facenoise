@@ -9,9 +9,10 @@ using Microsoft.ProjectOxford.Face;
 
 namespace FaceNoise
 {
+    // TODO: Gaussian blur noise to make it more smooth
+    // TODO: Deterministic blur w/ seed.
     class FaceDetector
     {
-        private readonly IFaceServiceClient _faceServiceClient = new FaceServiceClient("apikey");
         private string _filePath;
         public FaceDetector(string filePath)
         {
