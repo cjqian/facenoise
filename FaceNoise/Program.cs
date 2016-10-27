@@ -1,7 +1,4 @@
-﻿using Microsoft.ProjectOxford.Face.Contract;
-using System;
-using System.Diagnostics;
-using System.Drawing;
+﻿using System;
 
 namespace FaceNoise
 {
@@ -11,17 +8,24 @@ namespace FaceNoise
         {
             //Debugger.Launch();
 
+            var type = args[0];
+            var file = args[1];
 
-            Debugger.Launch();
-            var importFile = args[0];
-            var intensity = Double.Parse(args[1]);
+            // -e is to encrypt
+            if (type.Equals("-e"))
+            {
+                Double intensity = Double.Parse(args[2]);
+                var faceNoiser = new FaceNoiser(file);
+                faceNoiser.Noise(intensity);
+            }
 
-            var faceNoiser = new FaceNoiser(importFile);
-
-            var b = faceNoiser.Noise(intensity);
-            var t = FaceDenoiser.Denoise(b);
-            t.Save("did.jpg");
-            Console.WriteLine("Denoised!");
+            // -d is to decrypt
+            else if (type.Equals("-d"))
+            {
+                var outputFile = args[2];
+                var b = FaceDenoiser.Denoise(file);
+                b.Save(outputFile);
+            }
         }
     }
 }

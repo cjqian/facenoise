@@ -1,10 +1,6 @@
 ﻿using Microsoft.ProjectOxford.Face.Contract;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FaceNoise
 {
@@ -83,6 +79,12 @@ namespace FaceNoise
             }
 
             return newBitmap;
+        }
+
+        public static Bitmap Denoise(String file)
+        {
+            var b = new Bitmap(file);
+            return Denoise(b);
         }
 
         public static Bitmap Denoise(Bitmap b)

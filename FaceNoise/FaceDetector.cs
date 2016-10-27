@@ -13,6 +13,7 @@ namespace FaceNoise
     // TODO: Deterministic blur w/ seed.
     class FaceDetector
     {
+        private readonly IFaceServiceClient _faceServiceClient = new FaceServiceClient("6d686c7882a04cb3bee40d2ba944ff05");
         private string _filePath;
         public FaceDetector(string filePath)
         {

@@ -18,13 +18,32 @@ namespace FaceNoise
         private Random _random;
         private FaceDetector _faceDetector;
         private FaceRectangle[] _faceRectangles;
-
+        private FaceCircle[] _faceCircles;
+        
         public FaceNoiser(String fileName)
         {
             _inputName = fileName;
             _bitmap = new Bitmap(fileName);
             _bitsModded = 0;
+
+            // Make the face circles
             _faceDetector = new FaceDetector(fileName);
+            _faceRectangles = _faceDetector.UploadAndDetectFaces().GetAwaiter().GetResult();
+            Console.WriteLine(_faceRectangles.Length + " faces found.");
+            _faceCircles = new FaceCircle[_faceRectangles.Length];
+            for (var i = 0; i < _faceCircles.Length; i++)
+            {
+                _faceCircles[i] = new FaceCircle(_faceRectangles[i]);
+                var rectangle = _faceRectangles[i];
+                var rectString = String.Format("{0} {1} {2} {3}",
+                    rectangle.Top,
+                    rectangle.Height,
+                    rectangle.Left,
+                    rectangle.Width);
+
+                Console.WriteLine(rectString);
+                Console.WriteLine(_faceCircles[i].GetStringRepresentation());
+            }
 
             // Random seed based on time.
             int seed = (int)DateTime.Now.Ticks & 0x0000FFFF;
@@ -43,30 +62,24 @@ namespace FaceNoise
 
         private string GetEncryptedText()
         {
+            /*
             var text = GetRectangleString() + _seed;
             return text;
+            */
+            return "";
         }
 
-        public String GetRectangleString()
+        public String GetRectangleString(FaceRectangle rectangle)
         {
             // Returns something of the format:
             // 4 height width left top height width left top ....
+            var rectString = String.Format("{0} {1} {2} {3}",
+                rectangle.Top,
+                rectangle.Height,
+                rectangle.Left,
+                rectangle.Width);
 
-            var sb = new StringBuilder();
-            sb.Append(_faceRectangles.Length + " ");
-
-            for (int i = 0; i < _faceRectangles.Length; i++)
-            {
-                var rectangle = _faceRectangles[i];
-
-                sb.Append(rectangle.Top + " ");
-                sb.Append(rectangle.Height + " ");
-                sb.Append(rectangle.Left + " ");
-                sb.Append(rectangle.Width + " ");
-            }
-
-            Console.WriteLine("Rectangle string: " + sb.ToString());
-            return sb.ToString();
+            return rectString;
         }
 
         public int Wrap(int value)
@@ -111,19 +124,21 @@ namespace FaceNoise
         // Make noise in the image around detected faces
         public Bitmap MakeFacesNoise(double intensity)
         {
-            _faceRectangles = _faceDetector.UploadAndDetectFaces().GetAwaiter().GetResult();
-            Console.WriteLine(_faceRectangles.Length + " faces found.");
-
             Bitmap newBitmap = new Bitmap(_bitmap);
-            for (int i = 0; i < _faceRectangles.Length; i++)
+            for (int i = 0; i < _faceCircles.Length; i++)
             {
-                FaceRectangle rectangle = _faceRectangles[i];
-                for (int j = rectangle.Top; j < rectangle.Top + rectangle.Height; j++)
+                FaceCircle circle = _faceCircles[i];
+                for (var j = (int)(circle.CenterY - circle.Radius); 
+                    j < (int)(circle.CenterY + circle.Radius); j++)
                 {
-                    for (int k = rectangle.Left; k < rectangle.Left + rectangle.Width; k++)
+                    for (var k = (int)(circle.CenterX - circle.Radius); 
+                        k < (int)(circle.CenterX + circle.Radius); k++)
                     {
-                        var color = GetRandomNoise(_bitmap.GetPixel(k, j), intensity);
-                        newBitmap.SetPixel(k, j, color);
+                        if (circle.Contains(k, j))
+                        {
+                            var color = GetRandomNoise(_bitmap.GetPixel(k, j), intensity);
+                            newBitmap.SetPixel(k, j, color);
+                        }
                     }
                 }
             }
@@ -138,9 +153,9 @@ namespace FaceNoise
             Bitmap b = MakeFacesNoise(intensity);
 
             var encryptedText = GetEncryptedText() + " " + intensity;
-            Console.WriteLine("Encrypted text: " + encryptedText);
             Bitmap encryptedB = Steganographer.embedText(encryptedText, b);
             var exportName = GetExportName(intensity);
+            Console.WriteLine("Written to " + exportName);
             encryptedB.Save(exportName);
 
             return encryptedB;
