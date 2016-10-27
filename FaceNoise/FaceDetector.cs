@@ -20,20 +20,19 @@ namespace FaceNoise
             _filePath = filePath;
         }
 
-        public async Task<FaceRectangle[]> UploadAndDetectFaces()
+        public async Task<Face[]> UploadAndDetectFaces()
         {
             try
             {
                 using (Stream imageFileStream = File.OpenRead(_filePath))
                 {
                     var faces = await _faceServiceClient.DetectAsync(imageFileStream);
-                    var facesList = faces.Select(face => face.FaceRectangle);
-                    return facesList.ToArray();
+                    return faces.ToArray();
                 }
             }
             catch (Exception)
             {
-                return new FaceRectangle[0];
+                return new Face[0];
             }
         }
     }

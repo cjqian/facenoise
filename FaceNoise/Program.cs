@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace FaceNoise
 {
@@ -6,7 +7,7 @@ namespace FaceNoise
     {
         static void Main(string[] args)
         {
-            //Debugger.Launch();
+           // Debugger.Launch();
 
             var type = args[0];
             var file = args[1];

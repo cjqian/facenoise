@@ -61,6 +61,7 @@
     <Compile Include="FaceDenoiser.cs" />
     <Compile Include="FaceDetector.cs" />
     <Compile Include="FaceNoiser.cs" />
+    <Compile Include="FaceLandmarkRectangles.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Steganographer.cs" />

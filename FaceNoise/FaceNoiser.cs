@@ -1,55 +1,56 @@
 ﻿using Microsoft.ProjectOxford.Face.Contract;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FaceNoise
 {
     class FaceNoiser
     {
-        private String _seed;
+        // Probabilities:
+        private double NORMAL_PROBABILITY = .6;
+        private double LANDMARK_PROBABILITY = .8;
+
+        private String _seedColor;
+        private String _seedProbability;
         private string _inputName;
 
         private Bitmap _bitmap;
         private int _bitsModded;
-        private Random _random;
+        private Random _randomColor;
+        private Random _randomProbability;
         private FaceDetector _faceDetector;
-        private FaceRectangle[] _faceRectangles;
+
+        // Face circles
+        private Face[] _faces;
         private FaceCircle[] _faceCircles;
-        
+
         public FaceNoiser(String fileName)
         {
             _inputName = fileName;
             _bitmap = new Bitmap(fileName);
             _bitsModded = 0;
 
-            // Make the face circles
             _faceDetector = new FaceDetector(fileName);
-            _faceRectangles = _faceDetector.UploadAndDetectFaces().GetAwaiter().GetResult();
-            Console.WriteLine(_faceRectangles.Length + " faces found.");
-            _faceCircles = new FaceCircle[_faceRectangles.Length];
+            _faces = _faceDetector.UploadAndDetectFaces().GetAwaiter().GetResult();
+            Console.WriteLine(_faces.Length + " faces found.");
+
+            // Make the face circles
+            _faceCircles = new FaceCircle[_faces.Length];
             for (var i = 0; i < _faceCircles.Length; i++)
             {
-                _faceCircles[i] = new FaceCircle(_faceRectangles[i]);
-                var rectangle = _faceRectangles[i];
-                var rectString = String.Format("{0} {1} {2} {3}",
-                    rectangle.Top,
-                    rectangle.Height,
-                    rectangle.Left,
-                    rectangle.Width);
-
-                Console.WriteLine(rectString);
+                _faceCircles[i] = new FaceCircle(_faces[i]);
                 Console.WriteLine(_faceCircles[i].GetStringRepresentation());
             }
 
-            // Random seed based on time.
+            // Generate randomness variables
             int seed = (int)DateTime.Now.Ticks & 0x0000FFFF;
-            Console.WriteLine("Random seed is: " + seed);
-            _seed = seed.ToString();
-            _random = new Random(seed);
+            _seedColor = seed.ToString();
+            _randomColor = new Random(seed);
+
+            seed = (int)DateTime.Now.Ticks & 0x0000FFFF;
+            _seedProbability = seed.ToString();
+            _randomProbability = new Random();
         }
 
         private string GetExportName(double intensity)
@@ -63,7 +64,7 @@ namespace FaceNoise
         private string GetEncryptedText()
         {
             /*
-            var text = GetRectangleString() + _seed;
+            var text = GetRectangleString() + _seedColor;
             return text;
             */
             return "";
@@ -100,7 +101,15 @@ namespace FaceNoise
         // From -255 to 255
         public double RandomColorValue()
         {
-            return 255 * (_random.NextDouble() * 2 - 1);
+            return 255 * (_randomColor.NextDouble() * 2 - 1);
+        }
+
+        public Color GetRandomNoise(Color pixel, double intensity, double probability)
+        {
+            var p = _randomProbability.NextDouble();
+
+            if (p < probability) return GetRandomNoise(pixel, intensity);
+            return pixel;
         }
 
         public Color GetRandomNoise(Color pixel, double intensity)
@@ -121,6 +130,44 @@ namespace FaceNoise
             return color;
         }
 
+        // Make noise within circle
+        public void MakeFaceCircleNoise(Bitmap newBitmap, FaceCircle circle, double intensity)
+        {
+            var xOffset = circle.BoundingSquare.X;
+            var yOffset = circle.BoundingSquare.Y;
+
+            for (var i = 0; i < circle.LocationGuide.Length; i++)
+            {
+                for (var j = 0; j < circle.LocationGuide[i].Length; j++)
+                {
+                    var guide = circle.LocationGuide[i][j];
+                    var x = xOffset + j;
+                    var y = yOffset + i;
+
+                    if (InBounds(x, y))
+                    {
+                        var color = _bitmap.GetPixel(x, y);
+                        Color newColor;
+                        switch (guide)
+                        {
+                            case FaceCircle.Guide.NOT_PRESENT:
+                                newColor = color;
+                                break;
+                            case FaceCircle.Guide.FACE:
+                                newColor = GetRandomNoise(color, intensity, NORMAL_PROBABILITY);
+                                break;
+                            // Default: is a landmark
+                            default:
+                                newColor = GetRandomNoise(color, intensity, LANDMARK_PROBABILITY);
+                                break;
+                        }
+
+                        newBitmap.SetPixel(x, y, newColor);
+                    }
+                }
+            }
+        }
+
         // Make noise in the image around detected faces
         public Bitmap MakeFacesNoise(double intensity)
         {
@@ -128,19 +175,7 @@ namespace FaceNoise
             for (int i = 0; i < _faceCircles.Length; i++)
             {
                 FaceCircle circle = _faceCircles[i];
-                for (var j = (int)(circle.CenterY - circle.Radius); 
-                    j < (int)(circle.CenterY + circle.Radius); j++)
-                {
-                    for (var k = (int)(circle.CenterX - circle.Radius); 
-                        k < (int)(circle.CenterX + circle.Radius); k++)
-                    {
-                        if (circle.Contains(k, j))
-                        {
-                            var color = GetRandomNoise(_bitmap.GetPixel(k, j), intensity);
-                            newBitmap.SetPixel(k, j, color);
-                        }
-                    }
-                }
+                MakeFaceCircleNoise(newBitmap, circle, intensity);
             }
 
             Console.WriteLine(_bitsModded + " bits modded.");
@@ -159,6 +194,21 @@ namespace FaceNoise
             encryptedB.Save(exportName);
 
             return encryptedB;
+        }
+
+        public bool InBounds(int x, int y)
+        {
+            if (x < 0 || y < 0) return false;
+            if (x >= _bitmap.Width || y >= _bitmap.Height) return false;
+            return true;
+        }
+
+
+        public bool InBounds(Point point)
+        {
+            if (point.X < 0 || point.Y < 0) return false;
+            if (point.X >= _bitmap.Width || point.Y >= _bitmap.Height) return false;
+            return true;
         }
     }
 }
