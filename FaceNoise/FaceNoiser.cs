@@ -10,6 +10,7 @@ namespace FaceNoise
         // Probabilities:
         private double NORMAL_PROBABILITY = .6;
         private double LANDMARK_PROBABILITY = .8;
+        private double GAUSSIAN_RADIUS = 2;
 
         private String _seedColor;
         private String _seedProbability;
@@ -53,7 +54,7 @@ namespace FaceNoise
             _randomProbability = new Random();
         }
 
-        private string GetExportName(double intensity)
+        public string GetExportName(double intensity)
         {
             var parts = _inputName.Split('.');
             var name = parts[0] + "-" + intensity + "." + parts[1];
@@ -136,17 +137,18 @@ namespace FaceNoise
             var xOffset = circle.BoundingSquare.X;
             var yOffset = circle.BoundingSquare.Y;
 
+            // First pass makes noise within the face
             for (var i = 0; i < circle.LocationGuide.Length; i++)
             {
                 for (var j = 0; j < circle.LocationGuide[i].Length; j++)
                 {
-                    var guide = circle.LocationGuide[i][j];
                     var x = xOffset + j;
                     var y = yOffset + i;
 
                     if (InBounds(x, y))
                     {
                         var color = _bitmap.GetPixel(x, y);
+                        var guide = circle.LocationGuide[i][j];
                         Color newColor;
                         switch (guide)
                         {
@@ -166,6 +168,39 @@ namespace FaceNoise
                     }
                 }
             }
+
+            // Second pass makes gaussian noise
+            var gaussianRadius = (int) (circle.BoundingCircle.Radius * GAUSSIAN_RADIUS);
+            var gaussianCircle = new Circle(circle.BoundingCircle.Center, gaussianRadius);
+
+            for (var i = circle.BoundingCircle.Center.Y - gaussianRadius; 
+                i < circle.BoundingCircle.Center.Y + gaussianRadius; i++)
+            {
+                for (var j = circle.BoundingCircle.Center.X - gaussianRadius;
+                    j < circle.BoundingCircle.Center.X + gaussianRadius; j++)
+                {
+                    if (InBounds(j, i) 
+                        && !circle.BoundingCircle.Contains(j, i)
+                        && gaussianCircle.Contains(j, i))
+                    {
+                        var constant = GetGaussianConstant(circle, gaussianRadius, j, i);
+                        var color = _bitmap.GetPixel(j, i);
+                        var newColor = GetRandomNoise(color, intensity * constant, NORMAL_PROBABILITY);
+                        newBitmap.SetPixel(j, i, newColor);
+                    }
+                }
+            }
+        }
+
+        public double GetGaussianConstant(FaceCircle circle, int gaussianRadius, int x, int y)
+        {
+            var distance = circle.BoundingCircle.GetDistanceFromCircle(x, y);
+            var maxDistance = gaussianRadius - circle.BoundingCircle.Radius;
+            var exponent = -1 * (distance / maxDistance);
+
+            // .367 to 1
+            double constant = Math.Exp(exponent);
+            return constant;
         }
 
         // Make noise in the image around detected faces
@@ -186,7 +221,7 @@ namespace FaceNoise
         public Bitmap Noise(double intensity)
         {
             Bitmap b = MakeFacesNoise(intensity);
-
+/*
             var encryptedText = GetEncryptedText() + " " + intensity;
             Bitmap encryptedB = Steganographer.embedText(encryptedText, b);
             var exportName = GetExportName(intensity);
@@ -194,6 +229,8 @@ namespace FaceNoise
             encryptedB.Save(exportName);
 
             return encryptedB;
+            */
+            return b;
         }
 
         public bool InBounds(int x, int y)

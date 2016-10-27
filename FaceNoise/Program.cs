@@ -7,7 +7,7 @@ namespace FaceNoise
     {
         static void Main(string[] args)
         {
-           // Debugger.Launch();
+           //Debugger.Launch();
 
             var type = args[0];
             var file = args[1];
@@ -17,7 +17,10 @@ namespace FaceNoise
             {
                 Double intensity = Double.Parse(args[2]);
                 var faceNoiser = new FaceNoiser(file);
-                faceNoiser.Noise(intensity);
+                var exportName = faceNoiser.GetExportName(intensity);
+                Console.WriteLine("Written to " + exportName);
+                var b = faceNoiser.Noise(intensity);
+                b.Save(exportName);
             }
 
             // -d is to decrypt

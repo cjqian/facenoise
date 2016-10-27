@@ -24,6 +24,7 @@ namespace FaceNoise
                 return;
             }
 
+            Console.WriteLine("Landmarks detected!");
             ContainsLandmarks = true;
 
             // Set eye

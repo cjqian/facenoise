@@ -10,8 +10,7 @@ namespace FaceNoise
 {
     class FaceCircle
     {
-        public int Radius { get; set; }
-        public Point Center { get; set; }
+        public Circle BoundingCircle { get; set; }
 
         public Rectangle BoundingSquare { get; set; }
 
@@ -40,9 +39,10 @@ namespace FaceNoise
             var centerX = (2 * rectangle.Left + rectangle.Width) / 2;
             var centerY = (2 * rectangle.Top + rectangle.Height) / 2;
 
-            Radius = diameter / 2;
-            Center = new Point(centerX, centerY);
-            BoundingSquare = new Rectangle(centerX - Radius, centerY - Radius, diameter, diameter);
+            var radius = diameter / 2;
+            var center = new Point(centerX, centerY);
+            BoundingCircle = new FaceNoise.Circle(center, radius);
+            BoundingSquare = new Rectangle(centerX - radius, centerY - radius, diameter, diameter);
             Start = new Point(rectangle.Left, rectangle.Top);
             Features = new FaceLandmarkRectangles(face);
 
@@ -54,7 +54,7 @@ namespace FaceNoise
                 for (var j = 0; j < LocationGuide[i].Length; j++)
                 {
                     // Check out of bounds
-                    if (!this.Contains(j + BoundingSquare.X, i + BoundingSquare.Y))
+                    if (!BoundingCircle.Contains(j + BoundingSquare.X, i + BoundingSquare.Y))
                     {
                         LocationGuide[i][j] = Guide.NOT_PRESENT;
                     }
@@ -86,35 +86,10 @@ namespace FaceNoise
             }
         }
 
-        private double GetDistanceBetweenPoints(
-            int x1, int y1,
-            int x2, int y2)
-        {
-            // Distance formula!
-            var deltaX = x2 - x1;
-            var deltaY = y2 - y1;
-            var distance = Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY));
-            return distance;
-        }
-
-        // Returns 0 if in circle, or distance otherwise
-        public double GetDistanceFromCircle(int x, int y)
-        {
-            var distanceFromCenter = GetDistanceBetweenPoints(
-                x, y, Center.X, Center.Y);
-            return (distanceFromCenter <= Radius)
-                ? 0.0 : distanceFromCenter; 
-        }
-
-        public bool Contains(int x, int y)
-        {
-            return (GetDistanceFromCircle(x, y) == 0);
-        }
-
         // Returns the string representation
         public String GetStringRepresentation()
         {
-            var str = String.Format("{0} {1} {2}", Radius, Center.X, Center.Y);
+            var str = String.Format("{0} {1} {2}", BoundingCircle.Radius, BoundingCircle.Center.X, BoundingCircle.Center.Y);
             return str;
         }
     }
