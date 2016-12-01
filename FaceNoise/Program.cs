@@ -7,7 +7,7 @@ namespace FaceNoise
     {
         static void Main(string[] args)
         {
-           Debugger.Launch();
+           // Debugger.Launch();
 
             var type = args[0];
             var file = args[1];
@@ -17,6 +17,7 @@ namespace FaceNoise
             if (type.Equals("-e"))
             {
                 Double intensity = Double.Parse(args[2]);
+                Console.WriteLine("Encrypting " + file + ", perturbation " + intensity);
                 var b = FaceNoiser.Noise(file, intensity);
                 b.Save(output_file);
             }
