@@ -11,6 +11,8 @@ access_token = lines[0].split()[0]
 cookie = lines[1]
 fb_dtsg = lines[2]
 
+output_folder = "output/" + sys.argv[1] + "/"
+
 def get_sum(array):
 	sum = 0.0;
 
@@ -24,7 +26,7 @@ def populate_array_diagnostics(table, result):
 	for i in xrange(0, len(result)):
 		table.add_row(["" , "", result[i]['name'][0:12], str(result[i]['certainity'])[0:5]])
 
-def print_diagnostics(image, input_result, output_result):
+def get_diagnostics(image, input_result, output_result):
 	table = PrettyTable(["File", "Status", "Name", "Certainity"])
 	table.align["Name"] = "l"
 	table.border = False
@@ -38,7 +40,7 @@ def print_diagnostics(image, input_result, output_result):
 	table.add_row(["", "Output", "", ""])
 	populate_array_diagnostics(table, output_result)
 
-	print table
+	return table
 
 def concat_array(array):
 	result = "";
@@ -86,17 +88,21 @@ output_sum = 0.0
 n_lost_faces = 0
 n_total_faces = 0
 
-for image in listdir("output/"):
+output_string = ""
+for image in listdir("input/"):
 	input_result = get_recognition(image)
 	input_sum += get_sum(input_result)
 
-	output_result = recognize("output/" + image, access_token, cookie, fb_dtsg)
+	output_result = recognize(output_folder + image, access_token, cookie, fb_dtsg)
 	output_sum += get_sum(output_result)
 
 	n_lost_faces += len(input_result) - len(output_result)
 	n_total_faces += len(input_result)
 
-	print_diagnostics(image, input_result, output_result)
+	table = get_diagnostics(image, input_result, output_result)
+	print table
+	output_string += table.get_string() 
+	output_string += "\n"
 
 # Printing final metrics
 print "\n\n"
@@ -114,3 +120,8 @@ success_metric = 1.0 - (output_sum / input_sum)
 final_metrics.add_row(["Success metric", success_metric])
 
 print final_metrics
+output_string += final_metrics.get_string()
+
+with open(output_folder + "result.log", 'w') as file:
+	file.write(output_string)
+	file.close()

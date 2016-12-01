@@ -11,21 +11,14 @@ namespace FaceNoise
 
             var type = args[0];
             var file = args[1];
-            var output_file = "output/" + file;
 
             // -e is to encrypt
             if (type.Equals("-e"))
             {
                 Double intensity = Double.Parse(args[2]);
                 Console.WriteLine("Encrypting " + file + ", perturbation " + intensity);
+                var output_file = "output/" + intensity + "/" + file;
                 var b = FaceNoiser.Noise(file, intensity);
-                b.Save(output_file);
-            }
-
-            // -d is to decrypt
-            else if (type.Equals("-d"))
-            {
-                var b = FaceDenoiser.Denoise(file);
                 b.Save(output_file);
             }
         }
